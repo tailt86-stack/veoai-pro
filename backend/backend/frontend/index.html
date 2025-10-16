@@ -48,5 +48,30 @@
       document.getElementById("result").innerText = data.message;
     }
   </script>
+  <script>
+const btn = document.querySelector("button");
+const input = document.querySelector("textarea");
+
+btn.addEventListener("click", async () => {
+  const prompt = input.value.trim();
+  if (!prompt) return alert("Nhập mô tả video trước!");
+
+  document.body.insertAdjacentHTML('beforeend', `<p>🎬 Đang tạo video cho prompt: ${prompt}</p>`);
+
+  const res = await fetch("/generate-video", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt })
+  });
+  const data = await res.json();
+
+  if (data.status === "success") {
+    document.body.insertAdjacentHTML('beforeend', `<p>✅ Video đã sẵn sàng: <a href="${data.video_url}" target="_blank">${data.video_url}</a></p>`);
+  } else {
+    document.body.insertAdjacentHTML('beforeend', `<p>❌ Lỗi khi tạo video.</p>`);
+  }
+});
+</script>
+
 </body>
 </html>
