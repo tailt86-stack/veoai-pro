@@ -1,9 +1,52 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>VeoAI-Pro Frontend</title>
-  </head>
-  <body>
-    <h1>Welcome to VeoAI-Pro Frontend</h1>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <title>VeoAI-Pro Studio</title>
+  <style>
+    body { font-family: Arial; padding: 40px; background-color: #f7f9fc; }
+    textarea {
+      width: 80%;
+      height: 120px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 12px;
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover { background-color: #0056b3; }
+  </style>
+</head>
+<body>
+  <h1>🎬 VeoAI-Pro - Trình tạo video thông minh</h1>
+  <p>Nhập mô tả video bạn muốn tạo:</p>
+
+  <textarea id="prompt" placeholder="Ví dụ: Một chú mèo ngồi dưới ánh trăng..."></textarea><br>
+  <button onclick="generate()">Tạo video</button>
+
+  <p id="result"></p>
+
+  <script>
+    async function generate() {
+      const prompt = document.getElementById("prompt").value;
+      document.getElementById("result").innerText = "⏳ Đang gửi yêu cầu...";
+      const res = await fetch("/generate-video", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({prompt})
+      });
+      const data = await res.json();
+      document.getElementById("result").innerText = data.message;
+    }
+  </script>
+</body>
 </html>
