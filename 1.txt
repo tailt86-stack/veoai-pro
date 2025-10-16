@@ -1,0 +1,303 @@
+từng mục):
+
+veoai-pro/
+├── backend/
+│   ├── main.py
+│   ├── eleven_integration.py
+│   ├── video_pipeline.py
+│   ├── seo_gen.py
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── App.jsx
+│   └── package.json
+│
+├── Dockerfile
+├── render.yaml
+└── README_render.md
+
+⚙️ 2️⃣ NỘI DUNG CÁC FILE
+📄 backend/main.py
+from fastapi import FastAPI, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import tempfile, os, subprocess
+from backend.eleven_integration import synthesize_elevenlabs
+from backend.video_pipeline import combine_video
+from backend.seo_gen import generate_seo_metadata
+
+app = FastAPI(title="VeoAI Web Studio PRO (Tiếng Việt)")
+
+# Cho phép React gọi tới
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class ScriptInput(BaseModel):
+    script: str
+    style: str = "Cinematic"
+    voice: str = "vi_female"
+    music: str = "cinematic"
+
+@app.post("/generate")
+async def generate_video(data: ScriptInput, background_tasks: BackgroundTasks):
+    tmp = tempfile.mkdtemp()
+    script_path = os.path.join(tmp, "script.txt")
+    with open(script_path, "w", encoding="utf-8") as f:
+        f.write(data.script)
+
+    # Demo video đơn giản
+    video_path = os.path.join(tmp, "demo.mp4")
+    subprocess.run([
+        "ffmpeg", "-f", "lavfi", "-i", "color=c=black:s=1280x720:d=5",
+        "-vf", "drawtext=text='VeoAI Web Studio PRO':fontcolor=white:fontsize=42:x=(w-text_w)/2:y=(h-text_h)/2",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", video_path
+    ])
+
+    seo = generate_seo_metadata(data.script)
+    return {"message": "Video tạo thành công", "video_path": video_path, "seo": seo}
+
+📄 backend/eleven_integration.py
+import os, requests, tempfile
+
+ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY")
+
+def synthesize_elevenlabs(
+    text: str,
+    voice_id: str = "21m00Tcm4TlvDq8ikWAM",
+    stability: float = 0.4,
+    similarity_boost: float = 0.75,
+) -> str:
+    if not ELEVEN_API_KEY:
+        raise RuntimeError("Chưa có ELEVEN_API_KEY trong môi trường Render!")
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+    headers = {
+        "xi-api-key": ELEVEN_API_KEY,
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "text": text,
+        "voice_settings": {
+            "stability": stability,
+            "similarity_boost": similarity_boost
+        }
+    }
+    tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+    r = requests.post(url, headers=headers, json=payload)
+    if r.status_code == 200:
+        with open(tmp.name, "wb") as f:
+            f.write(r.content)
+        return tmp.name
+    else:
+        raise RuntimeError(f"Lỗi ElevenLabs: {r.status_code} {r.text}")
+
+📄 backend/video_pipeline.py
+import os, subprocess
+from typing import List
+
+def combine_video(
+    image_paths: List[str],
+    audio_path: str = None,
+    music_path: str = None,
+    output_path: str = "final_video.mp4",
+    duration_per_image: float = 4.0
+):
+    list_file = "images.txt"
+    with open(list_file, "w", encoding="utf-8") as f:
+        for img in image_paths:
+            f.write(f"file '{img}'\n")
+            f.write(f"duration {duration_per_image}\n")
+
+    temp_video = "temp.mp4"
+    subprocess.run([
+        "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+        "-i", list_file, "-vsync", "vfr", "-pix_fmt", "yuv420p",
+        temp_video
+    ])
+
+    audio_inputs, filters = [], []
+    if audio_path: audio_inputs += ["-i", audio_path]
+    if music_path: audio_inputs += ["-i", music_path]
+    if audio_path and music_path:
+        filters = ["-filter_complex", "[0:a][1:a]amix=inputs=2:duration=shortest"]
+
+    cmd = ["ffmpeg", "-y", "-i", temp_video] + audio_inputs + filters + [
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", output_path
+    ]
+    subprocess.run(cmd)
+    os.remove(temp_video)
+    return output_path
+
+📄 backend/seo_gen.py
+import os, openai, json
+
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+if OPENAI_KEY:
+    openai.api_key = OPENAI_KEY
+
+def generate_seo_metadata(script_text: str, lang: str = "vi") -> dict:
+    if not OPENAI_KEY:
+        return {
+            "title": "Vì sao Nokia sụp đổ – Bài học về sự tự mãn trong kinh doanh",
+            "description": "Video kể về hành trình huy hoàng và sụp đổ của Nokia – bài học quý giá cho mọi doanh nghiệp.",
+            "tags": ["Nokia", "bài học kinh doanh", "AI video", "công nghệ"]
+        }
+
+    prompt = f"""
+Tạo tiêu đề, mô tả và 10 hashtag YouTube hấp dẫn từ nội dung sau:
+
+{script_text}
+
+Trả kết quả JSON với các khóa: title, description, tags.
+"""
+    resp = openai.ChatCompletion.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+    )
+    text = resp.choices[0].message.content
+    try:
+        return json.loads(text)
+    except:
+        return {"title": "Video AI tự động", "description": text, "tags": []}
+
+📄 backend/requirements.txt
+fastapi
+uvicorn
+pydantic
+python-multipart
+requests
+openai
+
+📄 frontend/App.jsx
+import React, { useState } from "react";
+
+export default function App() {
+  const [script, setScript] = useState(`Cảnh 1: Một người đàn ông cầm chiếc Nokia 3310 dưới ánh nắng vàng, biểu tượng Nokia sáng nhẹ.
+Cảnh 2: CEO Nokia nhìn ra cửa sổ phòng họp, khuôn mặt trầm tư.
+Cảnh 3: Steve Jobs bước lên sân khấu, giơ cao chiếc iPhone đầu tiên.
+Cảnh 4: Đồ thị doanh số Nokia sụt giảm, màn hình chuyển tone xanh lạnh.
+Cảnh 5: Logo Nokia biến mất, hiện dòng chữ “Sự tự mãn là kẻ thù của sáng tạo.”`);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [seo, setSeo] = useState(null);
+
+  async function handleGenerate() {
+    setLoading(true);
+    setMessage("⏳ Đang tạo video...");
+    try {
+      const res = await fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script }),
+      });
+      const data = await res.json();
+      setMessage(data.message);
+      setSeo(data.seo);
+    } catch (e) {
+      setMessage("Lỗi khi tạo video: " + e.message);
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{ fontFamily: "sans-serif", maxWidth: 800, margin: "40px auto" }}>
+      <h1>🎬 VeoAI Web Studio PRO (Tiếng Việt)</h1>
+      <textarea
+        rows="10"
+        value={script}
+        onChange={(e) => setScript(e.target.value)}
+        style={{ width: "100%", marginTop: 10 }}
+      ></textarea>
+      <button
+        onClick={handleGenerate}
+        disabled={loading}
+        style={{
+          marginTop: 15,
+          backgroundColor: "#6b21a8",
+          color: "white",
+          padding: "10px 20px",
+          border: "none",
+          borderRadius: 6,
+          cursor: "pointer",
+        }}
+      >
+        {loading ? "Đang xử lý..." : "🚀 Tạo video demo"}
+      </button>
+      <p>{message}</p>
+      {seo && (
+        <div style={{ marginTop: 20 }}>
+          <h3>🧾 SEO YouTube</h3>
+          <p><b>Tiêu đề:</b> {seo.title}</p>
+          <p><b>Mô tả:</b> {seo.description}</p>
+          <p><b>Hashtag:</b> {seo.tags.join(", ")}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+📄 frontend/package.json
+{
+  "name": "veoai-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "serve -s ."
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "serve": "^14.2.0"
+  }
+}
+
+📄 Dockerfile
+FROM node:18 AS frontend
+WORKDIR /app/frontend
+COPY frontend/ .
+RUN npm install && npm run build || echo "skip build"
+
+FROM python:3.11
+WORKDIR /app
+COPY backend/ ./backend/
+COPY --from=frontend /app/frontend ./frontend
+RUN pip install -r backend/requirements.txt
+EXPOSE 10000
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "10000"]
+
+📄 render.yaml
+services:
+  - type: web
+    name: veoai-pro
+    env: docker
+    plan: free
+    region: singapore
+    autoDeploy: true
+    envVars:
+      - key: ELEVEN_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+📄 README_render.md
+# VeoAI Web Studio PRO – tiếng Việt (Render)
+
+## 🚀 Cách deploy
+
+1. Tạo repo trên GitHub, upload toàn bộ mã này.
+2. Vào [https://render.com](https://render.com)
+3. Tạo **New → Web Service → Public Git Repository**
+4. Dán link repo GitHub của bạn.
+5. Chọn:
+   - Name: veoai-pro
+   - Region: Singapore
+   - Plan: Free
+6. Trong Environment:
+   - ELEVEN_API_KEY = (API key từ elevenlabs.io)
+   - OPENAI_API_KEY = (API key GPT nếu có)
+7. Deploy → chờ vài phút → truy cập  
+   👉 `https://veoai-pro.onrender.com`
