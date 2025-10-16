@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 # Mount thư mục frontend để truy cập file HTML
-app.mount("/frontend", StaticFiles(directory="backend/frontend"), name="frontend")
+app.mount("/frontend", StaticFiles(directory="backend/backend/frontend"), name="frontend")
 
 @app.get("/", response_class=HTMLResponse)
 def read_root():
