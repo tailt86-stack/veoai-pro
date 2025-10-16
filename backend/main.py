@@ -20,3 +20,11 @@ async def generate_video(req: ScriptRequest):
     # Tạm thời mô phỏng tạo video
     # Sau này bạn sẽ thay phần này bằng API của Veo hoặc OpenAI
     return {"url": "https://example.com/fake_video.mp4"}
+from fastapi import Request
+
+@app.post("/generate-video")
+async def generate_video(request: Request):
+    data = await request.json()
+    prompt = data.get("prompt", "Không có nội dung")
+    # Sau này bạn sẽ tích hợp phần sinh video tại đây
+    return {"status": "ok", "message": f"Đang tạo video cho prompt: {prompt}"}
