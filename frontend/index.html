@@ -3,12 +3,41 @@
 <head>
   <meta charset="utf-8">
   <title>VeoAI-Pro Studio</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 50px;
+      background: #f8f9fa;
+    }
+    textarea {
+      width: 80%;
+      font-size: 16px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin-top: 10px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
 </head>
 <body>
   <h1>🎬 VeoAI-Pro - Trình tạo video thông minh</h1>
-  <p>Nhập nội dung video bạn muốn tạo:</p>
-  <textarea id="prompt" rows="4" cols="60" placeholder="Nhập mô tả video..."></textarea><br><br>
+  <p>Nhập mô tả video bạn muốn tạo:</p>
+
+  <textarea id="prompt" rows="4" cols="60" placeholder="Ví dụ: Một chú mèo ngồi dưới ánh trăng..."></textarea><br>
   <button onclick="generate()">Tạo video</button>
+
   <p id="result"></p>
 
   <script>
