@@ -6,3 +6,14 @@ app = FastAPI()
 @app.get("/", response_class=HTMLResponse)
 def read_root():
     return "<h1>🚀 VeoAI-Pro is running successfully!</h1><p>This is a test FastAPI app.</p>"
+from fastapi import Request
+from pydantic import BaseModel
+
+class ScriptRequest(BaseModel):
+    script: str
+
+@app.post("/api/generate")
+async def generate_video(req: ScriptRequest):
+    # Tạm thời mô phỏng tạo video
+    # Sau này bạn sẽ thay phần này bằng API của Veo hoặc OpenAI
+    return {"url": "https://example.com/fake_video.mp4"}
