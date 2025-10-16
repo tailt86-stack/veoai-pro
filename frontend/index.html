@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎬 VeoAI-Pro - Video Generator</title>
+</head>
+<body style="font-family: sans-serif; text-align:center; margin-top:50px">
+  <h1>🎥 VeoAI-Pro - Video Generator</h1>
+  <p>Nhập kịch bản bạn muốn chuyển thành video:</p>
+  <textarea id="script" rows="8" cols="60" placeholder="Nhập nội dung kịch bản..."></textarea>
+  <br><br>
+  <button onclick="generateVideo()">🚀 Tạo video</button>
+
+  <p id="result" style="margin-top:20px; color:blue"></p>
+
+  <script>
+    async function generateVideo() {
+      const script = document.getElementById("script").value;
+      document.getElementById("result").innerText = "⏳ Đang xử lý...";
+
+      const response = await fetch("https://veoai-pro.onrender.com/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script })
+      });
+
+      const data = await response.json();
+      document.getElementById("result").innerHTML = "✅ Video đã tạo: <a href='" + data.url + "' target='_blank'>Xem tại đây</a>";
+    }
+  </script>
+</body>
+</html>
